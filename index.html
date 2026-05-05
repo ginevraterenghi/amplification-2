@@ -242,7 +242,7 @@
     /* ── LINK SYSTEM ── */
     a:not(.nav-logo) {
       text-decoration: none;
-      border-bottom: 1px solid var(--rule);
+      border-bottom: 2px solid var(--rule);
       transition: border-color 0.2s;
     }
     a:not(.nav-logo):hover {
@@ -953,12 +953,13 @@
     .mobile-menu {
       position: fixed;
       inset: 0;
+      isolation: isolate;
       background:
-        radial-gradient(ellipse 70% 45% at 12% 18%, rgba(228, 220, 53, 0.72) 0%, transparent 60%),
-        radial-gradient(ellipse 55% 40% at 88% 12%, rgba(246, 106, 88, 0.65) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 50% at 58% 32%, rgba(6, 63, 66, 0.58) 0%, transparent 55%),
-        radial-gradient(ellipse 55% 42% at 82% 82%, rgba(182, 104, 220, 0.6) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 38% at 28% 80%, rgba(228, 220, 53, 0.38) 0%, transparent 55%),
+        radial-gradient(ellipse 70% 45% at 12% 18%, rgba(228, 220, 53, 0.88) 0%, transparent 58%),
+        radial-gradient(ellipse 55% 40% at 88% 12%, rgba(246, 106, 88, 0.82) 0%, transparent 54%),
+        radial-gradient(ellipse 60% 50% at 58% 32%, rgba(6, 63, 66, 0.75) 0%, transparent 54%),
+        radial-gradient(ellipse 55% 42% at 82% 82%, rgba(182, 104, 220, 0.78) 0%, transparent 54%),
+        radial-gradient(ellipse 50% 38% at 28% 80%, rgba(228, 220, 53, 0.55) 0%, transparent 54%),
         #FFFBF4;
       z-index: 500;
       display: flex;
@@ -977,7 +978,7 @@
       height: 200%;
       background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseM"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseM)"/%3E%3C/svg%3E');
       background-size: 250px 250px;
-      opacity: 0.85;
+      opacity: 0.4;
       mix-blend-mode: overlay;
       pointer-events: none;
     }
@@ -1479,7 +1480,9 @@ In embracing collective care, we advocate for a future in which data visualizati
   (function assignLinkColors() {
     const palette = ['#063F42', '#E4DC35', '#F6836E', '#B48CBE'];
     document.querySelectorAll('a:not(.nav-logo)').forEach(function(a) {
-      a.style.setProperty('--link-hover-color', palette[Math.floor(Math.random() * palette.length)]);
+      a.addEventListener('mouseenter', function() {
+        a.style.setProperty('--link-hover-color', palette[Math.floor(Math.random() * palette.length)]);
+      });
     });
   })();
 
