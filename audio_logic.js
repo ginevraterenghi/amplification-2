@@ -7,13 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let audioCtx;
   let isPlaying = false;
 
-  // Each color profile maps to a frequency and the CSS class of its blobs
+  // Lavender uses a real audio file, not an oscillator — kept separate from colorProfiles.
+  const lavenderAudio = new Audio('people_chatting.m4a');
+  lavenderAudio.loop   = true;
+  lavenderAudio.volume = 0;
+
+  const lavenderBlobEls = Array.from(document.querySelectorAll('.blob-lavender'));
+
+  // Oscillator-based synths for all other blobs
   const colorProfiles = {
-    'dark-teal': { freq: 130.81, type: 'sine',     blobs: ['.blob-teal'],     pan: -0.5 },
-    'orange':    { freq: 329.63, type: 'triangle',  blobs: ['.blob-orange'],   pan:  0.5 },
-    'lavender':  { freq: 440.00, type: 'sine',      blobs: ['.blob-lavender'], pan:  0.8 },
-    'yellow':    { freq: 659.25, type: 'square',    blobs: ['.blob-yellow'],   pan: -0.8 },
-    'pink':      { freq: 220.00, type: 'sine',      blobs: ['.blob-pink'],     pan:  0.0 },
+    'dark-teal': { freq: 130.81, type: 'sine',     blobs: ['.blob-teal'],   pan: -0.5 },
+    'orange':    { freq: 329.63, type: 'triangle',  blobs: ['.blob-orange'], pan:  0.5 },
+    'yellow':    { freq: 659.25, type: 'square',    blobs: ['.blob-yellow'], pan: -0.8 },
+    'pink':      { freq: 220.00, type: 'sine',      blobs: ['.blob-pink'],   pan:  0.0 },
   };
 
   const synths = {};
@@ -37,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
       gain.gain.value     = 0;
       panner.pan.value    = profile.pan || 0;
 
-      // For harsher waveforms, add a lowpass filter
       if (profile.type === 'square' || profile.type === 'triangle') {
         const filter = audioCtx.createBiquadFilter();
         filter.type            = 'lowpass';
@@ -51,12 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
       panner.connect(masterGain);
       osc.start();
 
-      // Collect all DOM elements for this color (multiple paths per color)
       const blobEls = profile.blobs.flatMap(sel =>
         Array.from(document.querySelectorAll(sel))
       );
 
-      synths[key] = { osc, gain, blobEls };
+      synths[key] = { gain, blobEls };
     }
   }
 
@@ -65,14 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (audioCtx.state === 'suspended') audioCtx.resume();
 
     isPlaying = !isPlaying;
-    soundToggle.innerText         = isPlaying ? 'Sound: On'  : 'Sound: Off';
-    soundToggle.style.background  = isPlaying ? '#06212C'    : 'none';
-    soundToggle.style.color       = isPlaying ? '#FFFBF4'    : '#06212C';
+    soundToggle.innerText        = isPlaying ? 'Sound: On'  : 'Sound: Off';
+    soundToggle.style.background = isPlaying ? '#06212C'    : 'none';
+    soundToggle.style.color      = isPlaying ? '#FFFBF4'    : '#06212C';
 
-    if (!isPlaying) {
+    if (isPlaying) {
+      lavenderAudio.play().catch(() => {});
+    } else {
       for (const key in synths) {
         synths[key].gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
       }
+      lavenderAudio.volume = 0;
+      lavenderAudio.pause();
     }
   }
 
@@ -88,15 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── SOUND: proximity of mouse to each color group ──
+  // ── Proximity: oscillator blobs + lavender sample ──
   document.addEventListener('mousemove', e => {
     if (!isPlaying || !audioCtx) return;
 
     const maxDist = window.innerWidth * 0.35;
 
-    for (const [key, synth] of Object.entries(synths)) {
+    // Oscillator synths
+    for (const [, synth] of Object.entries(synths)) {
       let minDist = Infinity;
-
       synth.blobEls.forEach(el => {
         const r  = el.getBoundingClientRect();
         const cx = r.left + r.width  / 2;
@@ -104,16 +112,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const d  = Math.hypot(e.clientX - cx, e.clientY - cy);
         if (d < minDist) minDist = d;
       });
-
-      // Fall off sharply — must be close to a shape to hear it
       let vol = Math.max(0, 1 - minDist / maxDist);
       vol = Math.pow(vol, 2.0) * 0.6;
       synth.gain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.08);
     }
+
+    // Lavender sample — proximity sets HTMLAudioElement volume, max 0.25
+    let lavMinDist = Infinity;
+    lavenderBlobEls.forEach(el => {
+      const r  = el.getBoundingClientRect();
+      const cx = r.left + r.width  / 2;
+      const cy = r.top  + r.height / 2;
+      const d  = Math.hypot(e.clientX - cx, e.clientY - cy);
+      if (d < lavMinDist) lavMinDist = d;
+    });
+    let lavVol = Math.max(0, 1 - lavMinDist / maxDist);
+    lavVol = Math.pow(lavVol, 2.0) * 0.25;
+    lavenderAudio.volume = lavVol;
   });
 
-  // ── TITLE COLOR: shifts toward nearest blob color on mousemove ──
-  const titleH1 = document.querySelector('.hero h1');
+  // ── Title colour: shifts toward nearest blob colour on mousemove ──
+  const titleH1    = document.querySelector('.hero h1');
   const allBlobEls = Array.from(document.querySelectorAll('.svg-blob, .hero-top-info'));
 
   const blobColorsMap = {
@@ -153,16 +172,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (titleH1) {
     document.addEventListener('mousemove', e => {
-      // Update CSS vars for gradient position
       const r = titleH1.getBoundingClientRect();
       const x = Math.max(-50, Math.min(150, ((e.clientX - r.left) / r.width)  * 100));
       const y = Math.max(-50, Math.min(150, ((e.clientY - r.top)  / r.height) * 100));
       titleH1.style.setProperty('--mouse-x', `${x}%`);
       titleH1.style.setProperty('--mouse-y', `${y}%`);
 
-      // Find nearest blob color
-      let minScore    = Infinity;
-      let closestHex  = '#FFFBF4';
+      let minScore   = Infinity;
+      let closestHex = '#FFFBF4';
 
       allBlobEls.forEach(blob => {
         const br = blob.getBoundingClientRect();
