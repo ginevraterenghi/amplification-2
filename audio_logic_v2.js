@@ -105,7 +105,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // ── CHATTER SYNTH  →  yellow blobs ──
+  // ── RECORDED CHAT AUDIO  →  yellow + lavender blobs ──
+  // Loads people_chatting.m4a and loops it silently. Volume is controlled
+  // entirely by the proximity system — no oscillators or synthesis involved.
+  function initChatFile(ctx, bus) {
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0;
+    gainNode.connect(bus);
+
+    fetch('people_chatting.m4a')
+      .then(r => r.arrayBuffer())
+      .then(ab => ctx.decodeAudioData(ab))
+      .then(buffer => {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop   = true;
+        source.connect(gainNode);
+        source.start();
+      })
+      .catch(e => console.warn('people_chatting.m4a failed to load:', e));
+
+    return { gain: gainNode };
+  }
+
+  // ── CHATTER SYNTH  →  yellow blobs (kept for reference, replaced by initChatFile) ──
   // Reference recording: dominant energy 400–500 Hz, continuous (autocorr 0.91–0.94),
   // near-zero above 600 Hz. Six detuned voices, single formant at 390–480 Hz,
   // only very slow swells (0.06–0.13 Hz) — NO syllable-rate LFOs.
@@ -344,6 +367,64 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // ── WIND WHISPER  →  lavender blobs ──
+  // White noise → hp(280) → bandpass(1100, Q0.8) → lp(3000) → swellGain → proximityGain → bus
+  // swellGain breathes slowly via a smoothed random LFO buffer (no oscillators).
+  // proximityGain is what the proximity system fades in/out — the two never interfere.
+  function initWind(ctx, bus) {
+    // Outer gain — controlled by proximity system
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0;
+    gainNode.connect(bus);
+
+    // Inner gain — natural wind breath swell (always running)
+    const swellGain = ctx.createGain();
+    swellGain.gain.value = 0.55;
+    swellGain.connect(gainNode);
+
+    // White noise buffer (4 s, looped)
+    const bufLen = ctx.sampleRate * 4;
+    const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const nd = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) nd[i] = Math.random() * 2 - 1;
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+    noiseSrc.loop   = true;
+
+    // Shape noise into a breathy whisper
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 280; hp.Q.value = 0.5;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 0.8;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 3000; lp.Q.value = 0.5;
+
+    noiseSrc.connect(hp); hp.connect(bp); bp.connect(lp); lp.connect(swellGain);
+    noiseSrc.start();
+
+    // Smooth random swell LFO: 30 s buffer, random targets every ~3 s, smoothstepped
+    const lfoLen = Math.floor(ctx.sampleRate * 30);
+    const lfoBuf = ctx.createBuffer(1, lfoLen, ctx.sampleRate);
+    const ld = lfoBuf.getChannelData(0);
+    const step = Math.floor(ctx.sampleRate * 3);
+    let prev = 0.55, nxt = 0.3 + Math.random() * 0.5;
+    for (let i = 0; i < lfoLen; i++) {
+      if (i % step === 0 && i > 0) { prev = nxt; nxt = 0.3 + Math.random() * 0.5; }
+      const t = (i % step) / step;
+      ld[i] = prev + (nxt - prev) * (3*t*t - 2*t*t*t);
+    }
+    const lfoSrc = ctx.createBufferSource();
+    lfoSrc.buffer = lfoBuf;
+    lfoSrc.loop   = true;
+    // Drive swellGain.gain directly (values 0.3–0.8 already in the buffer)
+    lfoSrc.connect(swellGain.gain);
+    lfoSrc.start();
+
+    return { gain: gainNode };
+  }
+
   // ── TECH BEEPS SYNTH  →  orange blobs ──
   // R2-D2-style: randomly scheduled chirps, sweeps, warbles, two-tone alerts.
   function initTechBeeps(ctx, bus) {
@@ -460,15 +541,13 @@ document.addEventListener('DOMContentLoaded', () => {
     masterGain.gain.value = 0.5;
     masterGain.connect(compressor);
 
-    // Pink — muted for now
+    // Pink, yellow — no sound
 
-    // Outdoor crowd → lavender
-    const crowd = initCrowd(audioCtx, masterGain);
+    // people_chatting.m4a → lavender
+    const chat = initChatFile(audioCtx, masterGain);
     synths['lavender'] = {
-      gain:        crowd.gain,
-      blobEls:     Array.from(document.querySelectorAll('.blob-lavender')),
-      startCrowd:  crowd.startCrowd,
-      stopCrowd:   crowd.stopCrowd,
+      gain:    chat.gain,
+      blobEls: Array.from(document.querySelectorAll('.blob-lavender')),
     };
 
     // Forest → teal
@@ -478,13 +557,6 @@ document.addEventListener('DOMContentLoaded', () => {
       blobEls:    Array.from(document.querySelectorAll('.blob-teal')),
       startBirds: forest.startBirds,
       stopBirds:  forest.stopBirds,
-    };
-
-    // Chatter → yellow
-    const chatter = initChatter(audioCtx, masterGain);
-    synths['yellow'] = {
-      gain:    chatter.gain,
-      blobEls: Array.from(document.querySelectorAll('.blob-yellow')),
     };
 
     // Tech beeps → orange
@@ -516,14 +588,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isPlaying) {
       synths['teal']?.startBirds();
       synths['orange']?.startBeeps();
-      synths['lavender']?.startCrowd();
     } else {
       for (const key in synths) {
         synths[key].gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.15);
       }
       synths['teal']?.stopBirds();
       synths['orange']?.stopBeeps();
-      synths['lavender']?.stopCrowd();
     }
   }
 
