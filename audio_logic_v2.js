@@ -541,7 +541,14 @@ document.addEventListener('DOMContentLoaded', () => {
     masterGain.gain.value = 0.5;
     masterGain.connect(compressor);
 
-    // Pink, yellow — no sound
+    // Pink — no sound
+
+    // Chatter synth → yellow
+    const chatter = initChatter(audioCtx, masterGain);
+    synths['yellow'] = {
+      gain:    chatter.gain,
+      blobEls: Array.from(document.querySelectorAll('.blob-yellow')),
+    };
 
     // people_chatting.m4a → lavender
     const chat = initChatFile(audioCtx, masterGain);
