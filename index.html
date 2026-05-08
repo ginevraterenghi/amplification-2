@@ -413,6 +413,7 @@
       overflow: hidden;
       z-index: 0;
       filter: blur(40px);
+      pointer-events: none;
     }
 
         
@@ -503,6 +504,8 @@
 
     .hero-desc {
       order: 2;
+      position: relative;
+      z-index: 4;
       display: flex;
       flex-direction: column;
       gap: 0.2rem;
@@ -1205,7 +1208,7 @@
       <li><a href="#organizers">Organizers</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
-    <button class="nav-sound-toggle" id="soundToggle" style="margin-left: auto;">Sound: Off</button>
+    <button class="nav-sound-toggle" id="soundToggle" style="margin-left: auto;">Turn sound on</button>
     <button class="nav-hamburger" id="navHamburger" aria-label="Open menu">
       <span></span><span></span><span></span>
     </button>
@@ -1237,7 +1240,7 @@
     <a href="#contact"      class="mobile-menu-link">Contact</a>
   </nav>
   <div class="mobile-menu-footer">
-    <button class="nav-sound-toggle" id="soundToggleMobile">Sound: Off</button>
+    <button class="nav-sound-toggle" id="soundToggleMobile">Turn sound on</button>
   </div>
 </div>
 
@@ -1271,13 +1274,16 @@
       <h1>Amplification</h1>
     </div>
     <div class="hero-desc">
-      <span class="hero-info-date">November 6–15, 2026</span>
-      <span class="hero-info-venue">MIT, Boston</span>
+      <span class="hero-info-date">November 9–13, 2026 - Boston</span>
+      
     </div>
     <div class="hero-top-info">
-     
-     <span class="conf-name">The conference and exhibition will be held alongside <a href="https://ieeevis.org/year/2026/welcome/" target="_blank" class="conf-vis-link">IEEE VIS</a></span>
-      <span class="conf-details">November 2–7, 2026 - MIT Boston</span>
+    <br>
+     <span class="conf-name">VISAP Keynote and exhibiton opening</span>
+      <span class="conf-details">November 11, 2026</span>
+    <br>
+     <span class="conf-name">Event hold alongside <a href="https://ieeevis.org/year/2026/welcome/" target="_blank" class="conf-vis-link">IEEE VIS</a></span>
+      <span class="conf-details">November 9–13, 2026 - Boston</span>
     </div>
     
     
@@ -1471,6 +1477,31 @@ In embracing collective care, we advocate for a future in which data visualizati
         <p>Tenure-track Assistant Professor of Immersive Experience Design at the MIX Center, Arizona State University. Her research explores a speculative assemblage of artificial memories and language at the intersection of immersive media design, experimental data visualization, and interactive AI art. Her work has earned distinctions including Best in Show at ACM SIGGRAPH and Honorary Mention at Prix Ars Electronica. She holds a PhD from UC Santa Barbara and has exhibited at CCCB, V2_ Lab, Artechouse NYC, and festivals across Europe, Asia, and the Americas.</p>
       </div>
     </div>
+
+    <div class="theme-body" style="margin-bottom: 0;">
+      <h2 class="theme-body-label">Design Chair</h2>
+      <div class="sub-type" style="min-height: auto; width: fit-content;">
+        <div class="sub-blob-svg" style="inset: -0.5rem;">
+          <svg width="470" height="497" viewBox="0 0 470 497" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <g filter="url(#orgBlobLavender)">
+              <path d="M53.6461 59.6484C44.8416 69.8888 40 82.9464 40 96.4513V206.08V256.665V337.536C40 349.146 41.6923 360.693 45.0235 371.815C60.1665 422.371 106.688 457 159.464 457H175.673H310.379C324.909 457 339.306 454.23 352.798 448.838C386.824 435.239 412.268 406.151 421.219 370.618L425.33 354.3C429.087 339.386 430.484 323.975 429.472 308.628L417.417 125.961C416.797 116.563 414.738 107.316 411.311 98.5425C397.522 63.2384 363.498 40 325.596 40H160.123L96.4508 40.0003C80.0014 40.0004 64.3702 47.1754 53.6461 59.6484Z" fill="#FAFAF8"/>
+            </g>
+            <defs>
+              <filter id="orgBlobLavender" x="0" y="0" width="469.791" height="497" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                <feGaussianBlur stdDeviation="8" result="effect1_foregroundBlur"/>
+              </filter>
+            </defs>
+          </svg>
+        </div>
+
+        <h3><a href="https://www.supsi.ch/en/ginevra-terenghi?p_p_state=pop_up&p_p_supsi_state=modal" target="_blank" class="org-link">Ginevra Terenghi</a></h3>
+        <p class="org-affil-tag">SUPSI University</p>
+      </div>
+    </div>
+
+
   </div>
 </section>
 
@@ -1581,7 +1612,8 @@ In embracing collective care, we advocate for a future in which data visualizati
   // Sync the mobile sound toggle with the main one
   const soundToggleMobile = document.getElementById('soundToggleMobile');
   if (soundToggleMobile) {
-    soundToggleMobile.addEventListener('click', () => {
+    soundToggleMobile.addEventListener('click', e => {
+      e.stopPropagation();
       document.getElementById('soundToggle').click();
       soundToggleMobile.innerText = document.getElementById('soundToggle').innerText;
     });
