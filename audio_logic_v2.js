@@ -614,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── PROXIMITY → volume (exclusive: only the nearest blob group plays) ──
-  document.addEventListener('mousemove', e => {
+  function updateProximity(clientX, clientY) {
     if (!isPlaying || !audioCtx) return;
     const maxDist = window.innerWidth * 0.22;
 
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const r  = el.getBoundingClientRect();
         const cx = r.left + r.width  / 2;
         const cy = r.top  + r.height / 2;
-        const d  = Math.hypot(e.clientX - cx, e.clientY - cy);
+        const d  = Math.hypot(clientX - cx, clientY - cy);
         if (d < minDist) minDist = d;
       });
       distances[key] = minDist;
@@ -643,7 +643,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       synth.gain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.10);
     }
-  });
+  }
+
+  function silenceAll() {
+    if (!audioCtx) return;
+    for (const key in synths) {
+      synths[key].gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.10);
+    }
+  }
+
+  document.addEventListener('mousemove', e => updateProximity(e.clientX, e.clientY));
+
+  document.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    updateProximity(t.clientX, t.clientY);
+  }, { passive: true });
+
+  document.addEventListener('touchend', silenceAll);
 
   // ── TITLE COLOR: shifts toward nearest blob on mousemove (unchanged) ──
   const titleH1   = document.querySelector('.hero h1');
